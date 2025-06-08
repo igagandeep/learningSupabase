@@ -1,7 +1,7 @@
-"use client"
-import { supabase } from "@/lib/supabaseClient"
-import { useEffect, useState } from "react"
+'use client'
 
+import { useEffect, useState, FormEvent } from 'react'
+import { supabase } from '../lib/supabaseClient'
 
 type Todo = {
   id: number
@@ -10,36 +10,69 @@ type Todo = {
   created_at: string
 }
 
-export default function Home() {
+export default function HomePage() {
   const [todos, setTodos] = useState<Todo[]>([])
+  const [title, setTitle] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch all todos
+  const fetchTodos = async () => {
+    const { data, error } = await supabase
+      .from('todos')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      setError(error.message)
+    } else {
+      setTodos(data as Todo[])
+    }
+  }
 
   useEffect(() => {
-    const fetchTodos = async () => {
-      const { data, error } = await supabase.from("todos").select("*");
-
-      if (error) {
-        console.error("Error fetching todos:", error)
-        return
-      }
-
-      setTodos(data)
-    }
-
     fetchTodos()
   }, [])
 
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        {todos.map((todo) => (
-          <div key={todo.id}>
-            <p>{todo.title}</p>
-            <p>{todo.is_complete ? "Complete" : "Not Complete"}</p>
-            <p>{todo.created_at}</p>
-          </div>
-        ))}
-      </main>
+  // Insert new todo
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
 
-    </div>
-  );
+    if (!title.trim()) return
+
+    const { error } = await supabase.from('todos').insert({ title })
+
+    if (error) {
+      setError(error.message)
+    } else {
+      setTitle('')
+      fetchTodos()
+    }
+  }
+
+  return (
+    <main style={{ padding: 20 }}>
+      <h1>My Todos</h1>
+
+      <form onSubmit={handleSubmit} style={{ marginBottom: '1rem' }}>
+        <input
+          type="text"
+          placeholder="Enter todo"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={{ padding: '8px', width: '300px' }}
+        />
+        <button type="submit" style={{ marginLeft: '10px', padding: '8px 12px' }}>
+          Add Todo
+        </button>
+      </form>
+
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+
+      <ul>
+        {todos.map((todo) => (
+          <li key={todo.id}>✅ {todo.title}</li>
+        ))}
+      </ul>
+    </main>
+  )
 }
